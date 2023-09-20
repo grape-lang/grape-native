@@ -33,7 +33,7 @@ class ErrorHandler:
 
         return message
 
-    def message(kind: str, location: str, content: str) -> str:
+    def message(self, kind: str, location: str, content: str) -> str:
         message = kind
         
         if location and location != "":
@@ -44,7 +44,7 @@ class ErrorHandler:
 
         return message
 
-    def header(file: str, line: int, col: int) -> str:
+    def header(self, file: str, line: int, col: int) -> str:
         return "[" + file + ":" + str(line) + ":" + str(col) + "]"
 
 class ErrorReporter: 
@@ -55,7 +55,7 @@ class ErrorReporter:
         return errorMessage
 
     def warn(message: str, header: str = "Warning") -> str:
-        errorMessage = message.lower()
+        warningMessage = message.lower()
 
         print(ANSI.WARN + ANSI.BOLD + header + ": " + ANSI.NORMAL + warningMessage + ".")
         return warningMessage

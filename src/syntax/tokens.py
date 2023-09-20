@@ -19,6 +19,12 @@ class TokenType(Enum):
     PIPE_ARROW = "|>"
     ROOF = "^"
 
+    # Binary operators
+    AND = "and"
+    NOT = "not"
+    OR = "or"
+    NOR = "nor"
+    IN = "in"
     EQUAL = "="
     BANG_EQUAL = "!="
     EQUAL_EQUAL = "=="
@@ -27,28 +33,30 @@ class TokenType(Enum):
     LESS = "<"
     LESS_EQUAL = "<="
 
+    # Literals
     IDENTIFIER = 1
     STRING = 2 
     NUMBER = 3
     ATOM = 4
-
-    AND = "and"
-    NOT = "not"
-    OR = "or"
-    NOR = "nor"
-    IN = "in"
-    FN = "fn"
-    PUB = "pub"
-    NAMESPACE = "namespace"
-    IF = "if"
-    ELSEIF = "elseif"
-    ELSE= "else"
-    USE = "use"
-    DO = "do"
-    END = "end"
     TRUE = "true"
     FALSE = "false"
 
+    # Blocks
+    FN = "fn"
+    IF = "if"
+    ELSE= "else"
+    DO = "do"
+    END = "end"
+    
+    # Namespaces
+    NAMESPACE = "namespace"
+    USE = "use"
+    IMPORT = "import"
+    PUB = "pub"
+    AT = "@"
+    EXEC = "$"
+
+    # Whitespace
     NEWLINE = 5
     EOF = 6
 

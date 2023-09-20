@@ -35,18 +35,13 @@ class Tokenizer:
 
         match c:
             case "!":
-                if self.match("="):
-                    self.addToken(TokenType.BANG_EQUAL)
-                else:
-                    self.syntaxError(c)
+                if self.match("="): self.addToken(TokenType.BANG_EQUAL)
+                else: self.syntaxError(c)
 
-            case "=":
-                token = TokenType.EQUAL_EQUAL if self.match("=") else TokenType.EQUAL
-                self.addToken(token)
+            case "=": self.addToken(TokenType.EQUAL_EQUAL if self.match("=") else TokenType.EQUAL)
 
             case "<":
-                token = TokenType.LESS_EQUAL if self.match("=") else TokenType.LESS
-                self.addToken(token)
+                self.addToken(TokenType.LESS_EQUAL if self.match("=") else TokenType.LESS)
             
             case ">":
                 token = TokenType.GREATER_EQUAL if self.match("=") else TokenType.GREATER
@@ -100,14 +95,14 @@ class Tokenizer:
         if unexpectedString != "":
             message = "Unexpected \"" + unexpectedString + "\". " + message
 
-        self.errorHandler.report("Syntax error", self.line, self.col, "", message)
+        self.errorHandler.error("Syntax error", self.line, self.col, "", message)
 
     def handleString(self):
-        while self.peek() != "\"" and not self.isAtEnd():
+        while self.peek() != "\"" and not self.isAtEndOfFile():
             if self.peek() == "/n": self.line += 1
             self.advance()
 
-        if self.isAtEnd():
+        if self.isAtEndOfFile():
             self.syntaxError("", "Unterminated string", truncateString(self.currentString()))
             return
 
@@ -205,3 +200,6 @@ class Tokenizer:
     
     def isValidTokenType(self, string: str) -> bool:
         return string in [token_type.value for token_type in TokenType]
+
+class ParseError(Exception):
+    pass
