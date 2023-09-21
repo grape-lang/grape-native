@@ -64,7 +64,7 @@ class Debugger:
     def printTokens(tokens: list[Token]) -> None:
         print(Formatter.formatSuccess("Scanned tokens (" + str(len(tokens)) +"):"))
         
-        print(Formatter.formatTable(["Lex.", "Lit.", "Token type"]))
+        print(Formatter.formatTable(["Lexeme", "Literal", "Token type"]))
         print(Formatter.formatTableSeperator())
 
         for token in tokens:
@@ -107,11 +107,18 @@ class Formatter:
 
         for col in cols:
             if col != cols[-1]:
-                output += col + "\t| "
+                colLength = 3
+                wordTabLength = int((len(str(col)) + 1)/8)
+                
+                output += col
+                for i in range(0, colLength - wordTabLength):
+                    output += "\t"
+
+                output += "| "
             else:
                 output += col
 
         return output
 
     def formatTableSeperator() -> str:
-        return "------------------------------"
+        return "----------------------------------------------------------------"

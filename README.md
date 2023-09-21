@@ -38,8 +38,14 @@ primary     -> literal | grouping ;
 
 arguments   -> IDENTIFIER ("," IDENTIFIER)* ;
 
-literal     -> NUMBER | TEXT | ATOM | bool | list | tuple | IDENTIFIER ;
+literal     -> number | text | atom | bool | list | tuple | identifier ;
+
+text        -> "\"" ANY "\"";
+number      -> "." DIGITS | DIGITS "." DIGITS | DIGITS ;
+atom        -> CAPITAL_CHAR + ALPHANUMERIC ;
+identifier  -> ALPHANUMERIC ;
 bool        -> "true" | "false" ;
+
 list        -> "[" collection "]" ;
 tuple       -> "(" collection ")" ;
 grouping    -> "(" expression ")" ;
