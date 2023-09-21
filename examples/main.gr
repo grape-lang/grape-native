@@ -1,0 +1,15 @@
+import @model from "./model"
+
+value = 5,0*10^3
+interest = 0.5%
+
+fn B(value) do value + salary + value * interest
+
+(output, graph_points) = 
+  @model.run(B, {
+    start_value: 100,
+    start_at: 0,
+    max_t: 100,
+    dt: 1
+  })
+

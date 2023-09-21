@@ -1,0 +1,14 @@
+import @std
+
+fn run(model, opts) do
+  run(model, opts.start_value, [], opts.start_at, opts)
+end
+
+fn run(model, value, points, i, opts) do
+  if i >= opts.max_t do
+    (value, points)
+  else
+    value = value + model(value) * opts.dt
+    run(model, value, @list.append(points, value), i + opts.dt)
+  end
+end
