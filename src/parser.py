@@ -1,4 +1,6 @@
+from decimal import * 
 from syntax.tokens import *
+from config import * 
 
 # ParseErroror is already used by Python itself
 class ParseError(BaseException):
@@ -120,7 +122,6 @@ class Parser:
 
             for parser in parsers:
                 out = parser(input)
-                print(out)
                 input = out[0]
                 output += out[1]
             
@@ -134,13 +135,13 @@ class Tokenizer(Parser):
 
         self.parser = self.many0(self.alt([
             self.operator,
-            self.punctuation,
             self.brackets,
             self.keyword,
             self.number,
             self.string,    
             self.boolean,
             self.identifier,
+            self.punctuation,
             self.whitespace,
             self.newline
         ]))
@@ -178,6 +179,7 @@ class Tokenizer(Parser):
             self.token(self.tag("*"), TokenType.STAR),
             self.token(self.tag("/"), TokenType.SLASH),
             self.token(self.tag("^"), TokenType.ROOF),
+            self.token(self.tag("%"), TokenType.PERCENT),
             self.token(self.tag("=="), TokenType.EQUAL_EQUAL),
             self.token(self.tag("="), TokenType.EQUAL),
             self.token(self.tag("!="), TokenType.BANG_EQUAL),
@@ -230,7 +232,16 @@ class Tokenizer(Parser):
         ])(input)    
 
     def number(self, input):
-        return self.token(self.tag(isDigit), TokenType.NUMBER, int)(input)
+        global MAX_DECIMALS
+        decimal = lambda d: round(Decimal(d), MAX_DECIMALS)
+        decimals = self.sequence([self.tag("."), self.tag(isDigit)])
+
+        # Parse a whole bunch of formats
+        return self.token(self.alt([
+            self.tag(isDigit),                            # 0 
+            self.sequence([self.tag(isDigit), decimals]), # 0.1
+            decimals                                      # .1
+        ]), TokenType.NUMBER, decimal)(input)
 
     def string(self, input):
         return self.token(self.sequence([
@@ -266,3 +277,6 @@ def isDigit(char):
 
 def isAlphaNumeric(char):
     return isAlpha(char) or isDigit(char)
+
+def isCapital(char):
+    return isAlpha(char) and char in charRange("A", "Z")

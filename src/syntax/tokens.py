@@ -18,6 +18,7 @@ class TokenType(Enum):
     PIPE = "|"
     PIPE_ARROW = "|>"
     ROOF = "^"
+    PERCENT = "%"
 
     # Binary operators
     AND = "and"
