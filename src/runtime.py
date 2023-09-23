@@ -28,7 +28,6 @@ class ErrorHandler:
         header = self.header(self.file, line, col)     
         message = self.message("", "", content)
 
-        self.hadError = True
         ErrorReporter.warn(message, header)
 
         return message
