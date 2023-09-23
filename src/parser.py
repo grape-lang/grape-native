@@ -9,9 +9,6 @@ class ParseError(Exception):
 class LintError(Exception):
     pass
 
-class LintWarning(Exception):
-    pass
-
 class Parser:
     def __init__(self, source: str):
         self.source = source
@@ -192,13 +189,17 @@ class Tokenizer(Parser):
     def tokenize(self):
         try:
             output = self.parser(self.source)
-            tokens = [token for token in output[1] if token is not None]
+            
+            if output[0] != "":
+                nextToken = output[0].split()[0]
+                raise ParseError("Unexpected '" + nextToken + "'")
 
+            tokens = [token for token in output[1] if token is not None]
             tokens.append(Token(TokenType.EOF, "", None, self.line, self.col))
             return tokens
 
         except ParseError as e:
-            self.errorHandler.report("Syntax error", self.line, self.col, "", str(e))
+            self.errorHandler.error("Syntax error", self.line, self.col, "", str(e))
 
     # Map the output of a parser to a token.
     # Accepts an optional argument for converting the 
@@ -276,14 +277,16 @@ class Tokenizer(Parser):
     def number(self, input):
         global MAX_DECIMALS
         decimal = lambda d: round(Decimal(d), MAX_DECIMALS)
-        decimals = self.sequence([self.tag("."), self.tag(isDigit)])
 
         # Parse a whole bunch of formats
         return self.token(self.alt([
-            self.tag(isDigit),                            # 0 
-            self.sequence([self.tag(isDigit), decimals]), # 0.1
-            decimals                                      # .1
+            self.tag(isDigit),                                 # 0 
+            self.sequence([self.tag(isDigit), self.decimals]), # 0.1
+            self.decimals                                      # .1
         ]), TokenType.NUMBER, decimal)(input)
+
+    def decimals(self, input):
+        return self.sequence([self.tag("."), self.tag(isDigit)])(input)
 
     def string(self, input):
         return self.token(self.sequence([
@@ -319,18 +322,20 @@ class Linter(Tokenizer):
         super().__init__(grape, source)
 
         self.parser = self.anywhere([
-            self.unterminatedString
+            self.unterminatedString,
+            self.maxDecimals
         ])
+
+    def anywhere(self, parsers):
+        parsers.append(self.advance())
+        return self.many0(self.alt(parsers))
 
     def lint(self):
         try:
             self.parser(self.source)
 
         except LintError as e:
-            self.errorHandler.error("Syntax error", self.line, self.col, "", str(e))
-        
-        except LintWarning as w:
-            self.errorHandler.warn("", self.line, self.col, "", str(w))
+            self.errorHandler.error("Syntax error", self.line, self.col, "", str(e))            
 
     def unterminatedString(self, input):
         out = self.tag('"')(input)
@@ -339,9 +344,14 @@ class Linter(Tokenizer):
             raise LintError("Unterminated string")
         else: 
             return self.string(input)
-            
 
-    def anywhere(self, parsers):
-        parsers.append(self.advance())
-        return self.many0(self.alt(parsers))
+    def maxDecimals(self, input):
+        global MAX_DECIMALS
+        out = self.decimals(input)
 
+        # The +1 is because out[1] also
+        # includes the leading .
+        if len(out[1]) > MAX_DECIMALS + 1:
+            self.errorHandler.warn(self.line, self.col, "The maximum amount of decimals is set to " + str(MAX_DECIMALS) + ", your value will be rounded")  
+
+        return out
