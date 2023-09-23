@@ -7,3 +7,15 @@ def charRange(start: str, stop: str) -> range:
 def truncateString(string: str, length: int = 6) -> str:
     string = string.split("\n")[0]
     return (string[:length] + '...') if len(string) > length else string
+
+def isAlpha(char):
+    return char.isalpha()
+    
+def isDigit(char):
+    return char.isdigit()
+
+def isAlphaNumeric(char):
+    return isAlpha(char) or isDigit(char)
+
+def isCapital(char):
+    return isAlpha(char) and char in charRange("A", "Z")

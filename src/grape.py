@@ -4,6 +4,7 @@ import sys
 from runtime import ErrorHandler
 from runtime import ErrorReporter
 from runtime import Debugger
+from parser import Linter
 from parser import Tokenizer
 from utils import *
 
@@ -56,9 +57,14 @@ class Grape:
         self.errorHandler = ErrorHandler()
 
     def runFile(self, filename: str):
-        source_code = open(filename, "r").read()
-        self.errorHandler.file = filename
-        self.run(source_code)
+        try:
+            source_code = open(filename, "r").read()
+            self.errorHandler.file = filename
+            self.run(source_code)
+
+        except FileNotFoundError:
+            self.errorHandler.file = filename
+            self.errorHandler.error("", 0, 0, "", "No such file or directory: '" + filename + "'")
 
     def startRepl(self):
         repl = Repl()
@@ -69,10 +75,16 @@ class Grape:
             self.errorHandler.hadError = False
 
     def run(self, source: str): 
+        linter = Linter(self, source)
+        linter.lint()
+
+        if self.errorHandler.hadError: return
+
         tokenizer = Tokenizer(self, source)
         tokens = tokenizer.tokenize()
 
         if self.debug: Debugger.printTokens(tokens)
+        if self.errorHandler.hadError: return
 
         # parser = Parser(self, tokens)
         # ast = parser.parse()

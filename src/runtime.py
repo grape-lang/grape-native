@@ -20,7 +20,7 @@ class ErrorHandler:
         message = self.message(kind, location, content)
 
         self.hadError = True
-        ErrorReporter.warn(message, header)
+        ErrorReporter.error(message, header)
 
         return message
 
@@ -34,13 +34,18 @@ class ErrorHandler:
         return message
 
     def message(self, kind: str, location: str, content: str) -> str:
-        message = kind
+        message = ""
+
+        if kind and kind != "":
+            message += kind
         
         if location and location != "":
             message += " at '" + str(location) + "'"
 
-        if message and message != "":
-            message += ": " + message
+        if content and content != "":
+            if message != "":
+                message += ": "
+            message += content
 
         return message
 
@@ -49,16 +54,12 @@ class ErrorHandler:
 
 class ErrorReporter: 
     def error(message: str, header: str = "Error") -> str:
-        errorMessage = message.lower()
-
-        print(ANSI.FAIL + ANSI.BOLD + header + ": " + ANSI.NORMAL + errorMessage + ".")
-        return errorMessage
+        print(ANSI.FAIL + ANSI.BOLD + header + ": " + ANSI.NORMAL + message + ".")
+        return message
 
     def warn(message: str, header: str = "Warning") -> str:
-        warningMessage = message.lower()
-
-        print(ANSI.WARN + ANSI.BOLD + header + ": " + ANSI.NORMAL + warningMessage + ".")
-        return warningMessage
+        print(ANSI.WARN + ANSI.BOLD + header + ": " + ANSI.NORMAL + message + ".")
+        return message
 
 class Debugger:
     def printTokens(tokens: list[Token]) -> None:

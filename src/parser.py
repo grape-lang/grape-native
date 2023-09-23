@@ -2,26 +2,32 @@ from decimal import *
 from syntax.tokens import *
 from config import * 
 
-# ParseErroror is already used by Python itself
-class ParseError(BaseException):
+# SyntaxError is already used by Python itself
+class ParseError(Exception):
+    pass
+
+class LintError(Exception):
+    pass
+
+class LintWarning(Exception):
     pass
 
 class Parser:
     def __init__(self, source: str):
         self.source = source
-        self.line = 0
+        self.line = 1
         self.col = 0
     
     def ignore(self, parser):
         def parse(input):
             output = parser(input)
             return (output[0], None) 
+
         return parse
 
     # Match a string or match every character for
     # which the given condition (a function) returns true.
     def tag(self, parser):
-
         # Match a string
         if isinstance(parser, str):
             def parse(input):
@@ -59,7 +65,17 @@ class Parser:
                 # If the full string matches
                 # (because it didn't return in the for loop)
                 return ("", input)
+
         return parse
+
+    def tag_until(self, parser):
+        # Match a string
+        if isinstance(parser, str):
+            return self.tag(lambda c: c != parser)
+
+        # Match a condition (a fucntion)
+        elif callable(parser):
+            return self.tag(lambda c: not parser(c))
 
     # Run this 1 or more times.
     def many1(self, parser):
@@ -68,6 +84,9 @@ class Parser:
             ok = false
 
             while True:
+                if input == "":
+                    break
+                    
                 try:
                     p = parser(input)
                     input = p[0]
@@ -81,6 +100,7 @@ class Parser:
                 return (input, output)
             else: 
                 raise ParseError
+
         return parse
 
     # Run this 0 or more times.
@@ -89,6 +109,9 @@ class Parser:
             output = []
 
             while True:
+                if input == "":
+                    break
+
                 try:
                     p = parser(input)
                     input = p[0]
@@ -98,6 +121,7 @@ class Parser:
                     break
 
             return (input, output)
+
         return parse
 
     # Try every parser given
@@ -112,6 +136,7 @@ class Parser:
                     pass
                 
             raise ParseError
+
         return parse
 
     # Match if the given parsers match in the
@@ -126,8 +151,26 @@ class Parser:
                 output += out[1]
             
             return (input, output)
+
         return parse
-                    
+
+    # Matches the next n chars
+    def advance(self, n: int = 1):
+        def parse(input):
+            if input[0:n] == "\n":
+                self.nextLine()
+
+            self.col += 1
+            return (input[n:], input[0:n])
+
+        return parse
+
+    # Sets the line and col attributes to the 
+    # next line.
+    def nextLine(self):
+        self.col = 0
+        self.line += 1
+
 class Tokenizer(Parser):
     def __init__(self, grape, source: str):
         self.errorHandler = grape.errorHandler
@@ -155,8 +198,7 @@ class Tokenizer(Parser):
             return tokens
 
         except ParseError as e:
-            message = e.message
-            self.errorHandler.report("Syntax error", self.line, self.col, "", message)
+            self.errorHandler.report("Syntax error", self.line, self.col, "", str(e))
 
     # Map the output of a parser to a token.
     # Accepts an optional argument for converting the 
@@ -245,9 +287,9 @@ class Tokenizer(Parser):
 
     def string(self, input):
         return self.token(self.sequence([
-            self.tag("\""), 
-            self.tag(lambda c: c != "\""), 
-            self.tag("\"")
+            self.tag('"'), 
+            self.tag_until('"'), 
+            self.tag('"')
         ]), TokenType.STRING, str)(input)
 
     def boolean(self, input):
@@ -267,16 +309,39 @@ class Tokenizer(Parser):
         ])(input)
 
     def newline(self, input):
-        return self.token(self.tag("\n"), TokenType.NEWLINE)(input)
+        out = self.token(self.tag("\n"), TokenType.NEWLINE)(input)
+        self.nextLine()
 
-def isAlpha(char):
-    return char.isalpha()
+        return out
+
+class Linter(Tokenizer):
+    def __init__(self, grape, source: str):
+        super().__init__(grape, source)
+
+        self.parser = self.anywhere([
+            self.unterminatedString
+        ])
+
+    def lint(self):
+        try:
+            self.parser(self.source)
+
+        except LintError as e:
+            self.errorHandler.error("Syntax error", self.line, self.col, "", str(e))
+        
+        except LintWarning as w:
+            self.errorHandler.warn("", self.line, self.col, "", str(w))
+
+    def unterminatedString(self, input):
+        out = self.tag('"')(input)
     
-def isDigit(char):
-    return char.isdigit()
+        if '"' not in out[0]:
+            raise LintError("Unterminated string")
+        else: 
+            return self.string(input)
+            
 
-def isAlphaNumeric(char):
-    return isAlpha(char) or isDigit(char)
+    def anywhere(self, parsers):
+        parsers.append(self.advance())
+        return self.many0(self.alt(parsers))
 
-def isCapital(char):
-    return isAlpha(char) and char in charRange("A", "Z")
