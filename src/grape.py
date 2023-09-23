@@ -83,8 +83,8 @@ class Grape:
         tokenizer = Tokenizer(self, source)
         tokens = tokenizer.tokenize()
 
-        if self.debug: Debugger.printTokens(tokens)
         if self.errorHandler.hadError: return
+        if self.debug: Debugger.printTokens(tokens)
 
         # parser = Parser(self, tokens)
         # ast = parser.parse()
