@@ -75,7 +75,7 @@ class Debugger:
         
         print("")
 
-    def printExpressions(expressions: list[Expr]) -> None:
+    def printAST(expressions: list[Expr]) -> None:
         print(Formatter.formatSuccess("Parsed expressions (" + str(len(expressions)) +"):"))
         for expression in expressions:
             print(expression)

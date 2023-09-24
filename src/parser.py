@@ -1,5 +1,6 @@
 from decimal import * 
 from syntax.tokens import *
+from syntax.ast import *
 from config import * 
 
 # SyntaxError is already used by Python itself
@@ -61,7 +62,7 @@ class Parser:
 
                 # If the full string matches
                 # (because it didn't return in the for loop)
-                return ("", input)
+                return ([], input)
 
         return parse
 
@@ -81,7 +82,7 @@ class Parser:
             ok = false
 
             while True:
-                if input == "":
+                if input == "" or input == []:
                     break
                     
                 try:
@@ -106,7 +107,7 @@ class Parser:
             output = []
 
             while True:
-                if input == "":
+                if input == "" or input == []:
                     break
 
                 try:
@@ -168,7 +169,7 @@ class Parser:
         self.col = 0
         self.line += 1
 
-class Tokenizer(Parser):
+class Lexer(Parser):
     def __init__(self, grape, source: str):
         self.errorHandler = grape.errorHandler
         super().__init__(source)
@@ -186,7 +187,7 @@ class Tokenizer(Parser):
             self.newline
         ]))
 
-    def tokenize(self):
+    def lex(self):
         try:
             output = self.parser(self.source)
             
@@ -317,7 +318,7 @@ class Tokenizer(Parser):
 
         return out
 
-class Linter(Tokenizer):
+class Linter(Lexer):
     def __init__(self, grape, source: str):
         super().__init__(grape, source)
 
@@ -355,3 +356,57 @@ class Linter(Tokenizer):
             self.errorHandler.warn(self.line, self.col, "The maximum amount of decimals is set to " + str(MAX_DECIMALS) + ", your value will be rounded")  
 
         return out
+
+class Analyzer(Parser):
+    def __init__(self, grape, tokens: list[Token]) -> list[Expr]:
+        self.errorHandler = grape.errorHandler
+        super().__init__(tokens)
+
+        self.parser = self.many0(self.expression)
+
+    def analyze(self):
+        try:
+            output = self.parser(self.source)
+            
+            if output[0] != []:
+                nextToken = output[0][0]
+                raise ParseError("Unexpected '" + nextToken.lexeme + "'")
+
+            expressions = [expression for expression in output[1] if expression is not None]
+            return expressions
+
+        except ParseError as e:
+            self.errorHandler.error("Syntax error", self.line, self.col, "", str(e))
+
+    def expression(self, input):
+        return self.alt([
+            self.assignment
+            self.if
+            self.function
+            self.do
+            self.logic_or
+        ])(input)
+
+    def type(self, token_type: TokenType):
+        def parse(input):
+            out = self.advance()
+            
+            if out[1].token_type == token_type:
+                return out
+            else:
+                raise ParseError
+
+        return parse
+
+    def assignment(self, input):
+        out = self.sequence([
+            self.type(TokenType.IDENTIFIER),
+            self.type(TokenType.EQUAL),
+            self.expression
+        ])(input)
+
+        name = out[1][0]
+        initializer = out[1][2]
+        
+        return (out[0], Assignment(name, initializer))
+        

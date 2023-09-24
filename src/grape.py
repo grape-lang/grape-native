@@ -5,7 +5,8 @@ from runtime import ErrorHandler
 from runtime import ErrorReporter
 from runtime import Debugger
 from parser import Linter
-from parser import Tokenizer
+from parser import Lexer
+from parser import Analyzer
 from utils import *
 
 class CLI:
@@ -75,33 +76,30 @@ class Grape:
             self.errorHandler.hadError = False
 
     def run(self, source: str): 
-        linter = Linter(self, source)
-        linter.lint()
+        Linter(self, source).lint()
 
         if self.errorHandler.hadError: return
 
-        tokenizer = Tokenizer(self, source)
-        tokens = tokenizer.tokenize()
+        tokens = Lexer(self, source).lex()
 
         if self.errorHandler.hadError: return
-        if self.debug: Debugger.printTokens(tokens)
+        elif self.debug: 
+            Debugger.printTokens(tokens)
 
-        # parser = Parser(self, tokens)
-        # ast = parser.parse()
+        ast = Analyzer(self, tokens).analyze()
 
-        # if self.debug: Debugger.printStatements(statements)
-
-        # if self.errorHandler.hadError: return
-        # elif self.debug: Debugger.printRunning()
+        if self.errorHandler.hadError: return
+        elif self.debug: 
+            Debugger.printAST(ast)
+            Debugger.printRunning()
         
-        # interpreter = Interpreter(self, statements)
-        # interpreter.interpret()
+        # Interpreter(self, ast).interpret()
 
-        # if self.debug:
-        #     if self.errorHandler.hadError:
-        #         Debugger.printError()
-        #     else:
-        #         Debugger.printDone()
+        if self.debug:
+            if self.errorHandler.hadError:
+                Debugger.printError()
+            else:
+                Debugger.printDone()
 
 if __name__ == "__main__":
     CLI(sys.argv)
