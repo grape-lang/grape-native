@@ -14,13 +14,14 @@ _interpreted_ python ;)
 program     -> statement* EOF ;
 
 statement   -> expression NEWLINE ;
-expression  -> variable | if | function | do | logic_or ;
+expression  -> function | assignment | if | scoped | logic_or ;
 
 function    -> named | lamda ;
-assignment  -> IDENTIFIER "=" expression ;
-if          -> "if" "(" logic_or ")" scoped
 named       -> "fn" IDENTIFIER "(" arguments? ")" block ;
 lambda      -> "fn(" arguments? ")" block ;
+
+assignment  -> IDENTIFIER "=" expression ;
+if          -> "if" "(" logic_or ")" scoped
 
 scoped      -> block | line
 block       -> "do" statement* "end" ;
