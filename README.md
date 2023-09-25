@@ -11,47 +11,48 @@ _interpreted_ python ;)
 ### Grammar
 
 ```text
-program     -> statement* EOF ;
+program       -> statement* EOF ;
 
-statement   -> expression NEWLINE ;
-expression  -> function | assignment | if | scoped | logic_or ;
+statement     -> expression NEWLINE ;
+expression    -> function | assignment | if | scoped | logic_or ;
 
-function    -> named | lamda ;
-named       -> "fn" IDENTIFIER "(" arguments? ")" block ;
-lambda      -> "fn(" arguments? ")" block ;
+function      -> named | lamda ;
+named         -> "fn" IDENTIFIER "(" arguments? ")" block ;
+lambda        -> "fn(" arguments? ")" block ;
 
-arguments   -> IDENTIFIER ("," IDENTIFIER)* ;
-
-
-assignment  -> IDENTIFIER "=" expression ;
-if          -> "if" "(" logic_or ")" scoped
-
-scoped      -> block | line
-block       -> "do" statement* "end" ;
-line        -> expression
-
-logic_or    -> logic_and ( "or" logic_and )* ;
-logic_and   -> equality ( "and" equality )* ;
-equality    -> comparison ( ( "==" | "!=" ) comparison )* ;
-comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term        -> factor ( ( "+" | "-" ) factor )* ;
-factor      -> unary ( ( "/" | "*" ) unary )* ;
-unary       -> ( "-" | "not" ) unary | call ;
-call        -> primary ( "(" collection? ")" )* ;
-primary     -> literal | grouping ;
+arguments     -> IDENTIFIER ("," IDENTIFIER)* ;
 
 
-literal     -> number | text | atom | bool | list | tuple | identifier ;
+assignment    -> IDENTIFIER "=" expression ;
+if            -> "if" "(" logic_or ")" scoped
 
-text        -> "\"" ANY "\"";
-number      -> "." DIGITS | DIGITS "." DIGITS | DIGITS ;
-atom        -> CAPITAL_CHAR + ALPHANUMERIC ;
-identifier  -> ALPHANUMERIC ;
-bool        -> "true" | "false" ;
+scoped        -> block | line
+block         -> "do" statement* "end" ;
+line          -> expression
 
-list        -> "[" collection "]" ;
-tuple       -> "(" collection ")" ;
-grouping    -> "(" expression ")" ;
+logic_or      -> logic_and ( "or" logic_and )* ;
+logic_and     -> equality ( "and" equality )* ;
+equality      -> comparison ( ( "==" | "!=" ) comparison )* ;
+comparison    -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term          -> factor ( ( "+" | "-" ) factor )* ;
+factor        -> unary ( ( "/" | "*" | "%" ) unary )* ;
+unary         -> ( "-" | "not" ) exponentation ;
+exponentation -> call ( "^" expression )
+call          -> primary ( "(" collection? ")" )* ;
+primary       -> literal | grouping ;
 
-collection  -> expression ("," expression)* ;
+
+literal       -> number | text | atom | bool | list | tuple | identifier ;
+
+text          -> "\"" ANY "\"";
+number        -> "." DIGITS | DIGITS "." DIGITS | DIGITS ;
+atom          -> CAPITAL_CHAR + ALPHANUMERIC ;
+identifier    -> ALPHANUMERIC ;
+bool          -> "true" | "false" ;
+
+list          -> "[" collection "]" ;
+tuple         -> "(" collection ")" ;
+grouping      -> "(" expression ")" ;
+
+collection    -> expression ("," expression)* ;
 ```
