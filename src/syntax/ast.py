@@ -24,7 +24,7 @@ class Line(Scoped):
     def __init__(self, expression: Expr):
         self.expression = expression
 
-class If(Expr):
+class Conditional(Expr):
     def __init__(self, condition: Expr, ifBranch: Scoped, elseBranch: Scoped = None):
         self.condition = condition
         self.ifBranch = ifBranch
