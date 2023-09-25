@@ -6,6 +6,9 @@ designed to be able to compile to native code using [PyPy](https://www.pypy.org)
 Having a _compiled_ interpreter should be A LOT quicker than an interpreter in
 _interpreted_ python ;)
 
+> Unfortunately my new parsing method, which I REALLY like, doesn't work well in
+> Python, so I'm once again rewriting. In Lua this time!
+
 ## Design
 
 ### Grammar
