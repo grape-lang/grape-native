@@ -20,6 +20,9 @@ function    -> named | lamda ;
 named       -> "fn" IDENTIFIER "(" arguments? ")" block ;
 lambda      -> "fn(" arguments? ")" block ;
 
+arguments   -> IDENTIFIER ("," IDENTIFIER)* ;
+
+
 assignment  -> IDENTIFIER "=" expression ;
 if          -> "if" "(" logic_or ")" scoped
 
@@ -34,10 +37,9 @@ comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term        -> factor ( ( "+" | "-" ) factor )* ;
 factor      -> unary ( ( "/" | "*" ) unary )* ;
 unary       -> ( "-" | "not" ) unary | call ;
-call        -> primary ( "(" arguments? ")" )* ;
+call        -> primary ( "(" collection? ")" )* ;
 primary     -> literal | grouping ;
 
-arguments   -> IDENTIFIER ("," IDENTIFIER)* ;
 
 literal     -> number | text | atom | bool | list | tuple | identifier ;
 

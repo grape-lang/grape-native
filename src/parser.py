@@ -380,10 +380,10 @@ class Analyzer(Parser):
 
     def expression(self, input):
         return self.alt([
-            self.assignment
-            self.if
-            self.function
-            self.do
+            self.assignment,
+            self.conditional,
+            self.scoped,
+            self.function,
             self.logic_or
         ])(input)
 
@@ -409,4 +409,261 @@ class Analyzer(Parser):
         initializer = out[1][2]
         
         return (out[0], Assignment(name, initializer))
+
+    def conditional(self, input):
+        out = self.sequence([
+            self.type(TokenType.IF),
+            self.type(TokenType.LEFT_PAREN),
+            self.expression,
+            self.type(TokenType.RIGHT_PAREN),
+            self.alt([self.doElseBlock, self.scoped])
+        ])(input)
+
+        condition = out[1][2]
+        thenBranch = out[1][4]
+
+        # TODO
+
+    def scoped(self, input):
+        return self.alt([
+            self.doLine,
+            self.doBlock,
+        ])(input)
+
+    def doLine(self, input):
+        out = self.sequence([
+            self.type(TokenType.DO),
+            self.expression,
+            self.type(TokenType.NEWLINE)
+        ])
+
+        expression = out[1][1]
+        return (out[0], Line(expression))
         
+    def doBlock(self, input):
+        out = self.sequence([
+            self.type(TokenType.DO),
+            self.body,
+            self.type(TokenType.END)
+        ])(input)
+
+        expressions = out[1][1]
+        return (out[0], Block(expressions))
+
+    def doElseBlock(self, input):
+        out = self.sequence([
+            self.type(TokenType.DO),
+            self.body,
+            self.type(TokenType.ELSE),
+            self.body,
+            self.type(TokenType.END)
+        ])(input)
+
+        # TODO 
+
+    def body(self, input):
+        return self.many1(self.alt([
+            self.expression, 
+            self.ignore(self.type(TokenType.NEWLINE))
+        ]))(input)
+
+    def function(self, input):
+        return self.alt([
+            self.named,
+            self.lambda,
+        ])
+
+    def named(self, input):
+        out = self.sequence([
+            self.type(TokenType.FN),
+            self.type(TokenType.IDENTIFIER),
+            self.parameters,
+            self.scoped
+        ])
+
+        name = out[1][1]
+        parameters = out[1][2]
+        body = out[1][3]
+
+        return (out[0], Named(name, parameters, body))
+
+    def lambda(self, input):
+        out = self.sequence([
+            self.type(TokenType.FN),
+            self.parameters,
+            self.scoped
+        ])
+
+        parameters = out[1][1]
+        body = out[1][2]
+
+        return (out[0], Lambda(parameters, body))
+
+    def parameters(self, input):
+        return self.sequence([
+            self.ignore(self.type(TokenType.LEFT_PAREN)),
+            self.comma0(self.type(TokenType.IDENTIFIER)),
+            self.ignore(self.type(TokenType.RIGHT_PAREN)),
+        ])(input)
+
+    # Comma separated lists with at least 0 item
+    def comma0(self, parser):
+        def parse(input):
+            try:
+                return self.comma1(parser)
+            except ParseError:
+                return (input, [])
+    
+    # Comma separated lists with at least 1 item
+    def comma1(self, parser):
+        return self.sequence([
+            parser,
+            self.many0(self.sequence([
+                self.ignore(self.type(TokenType.COMMA))
+                parser
+            ]))
+        ])
+
+    def binary(self, parser, operator):
+        def parse(input):
+            out = self.sequence([
+                parser,
+                operator,
+                self.operator(parser, operator)
+            ])(input)
+
+            left = out[1][0]
+            operator = out[1][1]
+            right = out[1][2]
+
+            return (out[0], Binary(left, operator, right))
+
+        return parse
+
+    def logicOr(self, input):
+        return self.binary(self.logicAnd, self.type(TokenType.OR))(input)
+
+    def logicAnd(self, input):
+        return self.binary(self.equality, self.type(TokenType.AND))(input)
+
+    def equality(self, input):
+        return self.binary(self.comparison, self.alt([
+            self.type(TokenType.EQUAL_EQUAL), 
+            self.type(TokenType.BANG_EQUAL)
+        ]))(input)
+
+    def comparison(self, input):
+        return self.binary(self.term, self.alt([
+            self.type(TokenType.GREATER), 
+            self.type(TokenType.GREATER_EQUAL),
+            self.type(TokenType.LESS),
+            self.type(TokenType.LESS_EQUAL)
+        ]))(input)
+
+    def term(self, input):
+        return self.binary(self.factor, self.alt([
+            self.type(TokenType.PLUS), 
+            self.type(TokenType.MINUS)
+        ]))(input)
+
+    def factor(self, input):
+        return self.binary(self.negation, self.alt([
+            self.type(TokenType.SLASH), 
+            self.type(TokenType.STAR)
+        ]))(input)
+
+    def unary(self, parser, operator):
+        def parse(input):
+            out = self.sequence([
+                operator,
+                self.unary(parser, operator)
+            ])(input)
+
+            operator = out[1][0]
+            right = out[1][1]
+
+            return (out[0], Unary(operator, right))                
+
+        return parse
+
+    def negation(self, input):
+        return self.alt([
+            self.call, 
+            self.unary(self.call, self.alt([
+                self.type(TokenType.MINUS),
+                self.type(TokenType.NOT)
+            ]))
+        ])
+
+    def call(self, input):
+        out = self.sequence([
+            self.alt([self.call, self.primary]),
+            self.arguments
+        ])
+
+        callee = out[1][0]
+        arguments = out[1][1]
+
+        return (out[0], Call(callee, arguments))
+
+    def arguments(self, input):
+        return self.sequence([
+            self.ignore(self.type(TokenType.LEFT_PAREN)),
+            self.collection,
+            self.ignore(self.type(TokenType.RIGHT_PAREN)),
+        ])(input)
+
+    def primary(self, input):
+        return self.alt([
+            self.literal,
+            self.boolean,
+            self.list,
+            self.tuple,
+            self.grouping
+        ])(input)
+
+    def literal(self, input):
+        out = self.alt([
+            self.type(TokenType.IDENTIFIER),
+            self.type(TokenType.NUMBER),
+            self.type(TokenType.STRING),
+            self.type(TokenType.ATOM),
+        ])(input)
+
+        return (out[0], Literal(out[1]))
+
+    def boolean(self, input):
+        out = self.alt([
+            self.type(TokenType.TRUE),
+            self.type(TokenType.FALSE)
+        ])(input)
+
+        return (out[0], Literal(out[1]))
+
+    def list(self, input):
+        out = self.sequence([
+            self.ignore(self.type(TokenType.LEFT_BRACKET)),
+            self.collection,
+            self.ignore(self.type(TokenType.RIGHT_BRACKET))
+        ])(input)
+
+        items = out[1][1]
+        return (out[0], List(items))
+
+    def tuple(self, input):
+        out = self.sequence([
+            self.type(TokenType.LEFT_BRACE),
+            # A tuple can't have just one value, otherwise it is considered a grouping
+            self.comma1(self.expression),
+            self.type(TokenType.RIGHT_BRACKE)
+        ])(input)
+
+        items = out[1][1]
+        return (out[0], Tuple(items))
+
+    def grouping(self, input):
+        out = self.expression(input)
+        return (out[0], Grouping(out[1]))
+
+    def collection(self, input):
+        return self.comma0(self.expression)(input)
