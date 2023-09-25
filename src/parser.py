@@ -384,14 +384,22 @@ class Analyzer(Parser):
             self.conditional,
             self.scoped,
             self.function,
-            self.logic_or
+            self.logicOr,
+            self.logicAnd,
+            self.equality,
+            self.comparison,
+            self.term,
+            self.factor,
+            self.unary,
+            self.call,
+            self.primary
         ])(input)
 
     def type(self, token_type: TokenType):
         def parse(input):
-            out = self.advance()
+            out = self.advance()(input)
             
-            if out[1].token_type == token_type:
+            if out[1][0].type == token_type:
                 return out
             else:
                 raise ParseError
@@ -420,9 +428,20 @@ class Analyzer(Parser):
         ])(input)
 
         condition = out[1][2]
-        thenBranch = out[1][4]
+        body = out[1][4]
 
-        # TODO
+        if isinstance(body, Scoped):
+            thenBranch = body
+            elseBranch = None
+
+        elif isinstance(body, tuple):
+            thenBranch = body[0]
+            elseBranch = body[1]
+
+        else:
+            raise ParseError("Invalid body for if condition. An if condition should be followed by either a do-end block, or a do-else-end block.")
+
+        return (out[0], Conditional(condition, thenBranch, elseBranch))
 
     def scoped(self, input):
         return self.alt([
@@ -435,7 +454,7 @@ class Analyzer(Parser):
             self.type(TokenType.DO),
             self.expression,
             self.type(TokenType.NEWLINE)
-        ])
+        ])(input)
 
         expression = out[1][1]
         return (out[0], Line(expression))
@@ -459,7 +478,10 @@ class Analyzer(Parser):
             self.type(TokenType.END)
         ])(input)
 
-        # TODO 
+        thenBranch = Block(out[1][1])
+        elseBranch = Block(out[1][3])
+
+        return (out[0], (thenBranch, elseBranch))
 
     def body(self, input):
         return self.many1(self.alt([
@@ -470,8 +492,8 @@ class Analyzer(Parser):
     def function(self, input):
         return self.alt([
             self.named,
-            self.lambda,
-        ])
+            self.anonymous,
+        ])(input)
 
     def named(self, input):
         out = self.sequence([
@@ -479,7 +501,7 @@ class Analyzer(Parser):
             self.type(TokenType.IDENTIFIER),
             self.parameters,
             self.scoped
-        ])
+        ])(input)
 
         name = out[1][1]
         parameters = out[1][2]
@@ -487,12 +509,12 @@ class Analyzer(Parser):
 
         return (out[0], Named(name, parameters, body))
 
-    def lambda(self, input):
+    def anonymous(self, input):
         out = self.sequence([
             self.type(TokenType.FN),
             self.parameters,
             self.scoped
-        ])
+        ])(input)
 
         parameters = out[1][1]
         body = out[1][2]
@@ -506,30 +528,12 @@ class Analyzer(Parser):
             self.ignore(self.type(TokenType.RIGHT_PAREN)),
         ])(input)
 
-    # Comma separated lists with at least 0 item
-    def comma0(self, parser):
-        def parse(input):
-            try:
-                return self.comma1(parser)
-            except ParseError:
-                return (input, [])
-    
-    # Comma separated lists with at least 1 item
-    def comma1(self, parser):
-        return self.sequence([
-            parser,
-            self.many0(self.sequence([
-                self.ignore(self.type(TokenType.COMMA))
-                parser
-            ]))
-        ])
-
-    def binary(self, parser, operator):
+    def binary(self, parser):
         def parse(input):
             out = self.sequence([
+                self.expression,
                 parser,
-                operator,
-                self.operator(parser, operator)
+                self.expression
             ])(input)
 
             left = out[1][0]
@@ -541,19 +545,19 @@ class Analyzer(Parser):
         return parse
 
     def logicOr(self, input):
-        return self.binary(self.logicAnd, self.type(TokenType.OR))(input)
+        return self.binary(self.type(TokenType.OR))(input)
 
     def logicAnd(self, input):
-        return self.binary(self.equality, self.type(TokenType.AND))(input)
+        return self.binary(self.type(TokenType.AND))(input)
 
     def equality(self, input):
-        return self.binary(self.comparison, self.alt([
+        return self.binary(self.alt([
             self.type(TokenType.EQUAL_EQUAL), 
             self.type(TokenType.BANG_EQUAL)
         ]))(input)
 
     def comparison(self, input):
-        return self.binary(self.term, self.alt([
+        return self.binary(self.alt([
             self.type(TokenType.GREATER), 
             self.type(TokenType.GREATER_EQUAL),
             self.type(TokenType.LESS),
@@ -561,13 +565,13 @@ class Analyzer(Parser):
         ]))(input)
 
     def term(self, input):
-        return self.binary(self.factor, self.alt([
+        return self.binary(self.alt([
             self.type(TokenType.PLUS), 
             self.type(TokenType.MINUS)
         ]))(input)
 
     def factor(self, input):
-        return self.binary(self.negation, self.alt([
+        return self.binary(self.alt([
             self.type(TokenType.SLASH), 
             self.type(TokenType.STAR)
         ]))(input)
@@ -593,13 +597,13 @@ class Analyzer(Parser):
                 self.type(TokenType.MINUS),
                 self.type(TokenType.NOT)
             ]))
-        ])
+        ])(input)
 
     def call(self, input):
         out = self.sequence([
-            self.alt([self.call, self.primary]),
+            self.expression,
             self.arguments
-        ])
+        ])(input)
 
         callee = out[1][0]
         arguments = out[1][1]
@@ -616,6 +620,7 @@ class Analyzer(Parser):
     def primary(self, input):
         return self.alt([
             self.literal,
+            self.variable,
             self.boolean,
             self.list,
             self.tuple,
@@ -624,13 +629,16 @@ class Analyzer(Parser):
 
     def literal(self, input):
         out = self.alt([
-            self.type(TokenType.IDENTIFIER),
             self.type(TokenType.NUMBER),
             self.type(TokenType.STRING),
             self.type(TokenType.ATOM),
         ])(input)
 
         return (out[0], Literal(out[1]))
+
+    def variable(self, input):
+        out = self.type(TokenType.IDENTIFIER)(input)
+        return (out[0], Variable(out[1]))
 
     def boolean(self, input):
         out = self.alt([
@@ -661,9 +669,27 @@ class Analyzer(Parser):
         items = out[1][1]
         return (out[0], Tuple(items))
 
+    def collection(self, input):
+        return self.comma0(self.expression)(input)
+
     def grouping(self, input):
         out = self.expression(input)
         return (out[0], Grouping(out[1]))
 
-    def collection(self, input):
-        return self.comma0(self.expression)(input)
+    # Comma separated lists with at least 0 item
+    def comma0(self, parser):
+        def parse(input):
+            try:
+                return self.comma1(parser)
+            except ParseError:
+                return (input, [])
+    
+    # Comma separated lists with at least 1 item
+    def comma1(self, parser):
+        return self.sequence([
+            parser,
+            self.many0(self.sequence([
+                self.ignore(self.type(TokenType.COMMA)),
+                parser
+            ]))
+        ])
