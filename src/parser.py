@@ -40,7 +40,7 @@ class Parser:
 
                 raise ParseError
         
-        # Match a condition (a fucntion)
+        # Match a condition (a function)
         elif callable(parser):
             def parse(input):
                 col = self.col
@@ -71,7 +71,7 @@ class Parser:
         if isinstance(parser, str):
             return self.tag(lambda c: c != parser)
 
-        # Match a condition (a fucntion)
+        # Match a condition (a function)
         elif callable(parser):
             return self.tag(lambda c: not parser(c))
 
